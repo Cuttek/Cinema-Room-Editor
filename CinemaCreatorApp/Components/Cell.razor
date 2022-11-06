@@ -1,0 +1,76 @@
+﻿@using CinemaCreatorApp.Data
+@using DataAccessLibrary.Models
+@implements IDisposable
+@inject ICreatorStateService CreatorState
+<div class="grid-item" @onclick='()=>{CreatorState.ClickedSeat(this);}'>
+
+    @{
+       // hasSeat = ContainedSeat is not null ? true : false;
+    }
+    
+    
+    
+
+        
+    @if(hasSeat)
+    {
+        <img src=@seatSource class="cell-image"/>
+    }
+    else
+    {
+        <p style="font-size:14px;color:red;">@column,@row</p>
+    }
+
+    
+</div>
+
+@code {
+    [Parameter]
+    public int row { get; set; }
+    [Parameter]
+    public int column { get; set; }
+    public SeatModel? ContainedSeat { get;private set; }
+
+    public bool hasSeat;
+    string seatSource = "png/single-seat-top.png";
+    void toggleSeatVisibility()
+    {
+        hasSeat = !hasSeat;
+    }
+    public void DeleteContainedSeat()
+    {
+        ContainedSeat = null;
+        hasSeat = false;
+    }
+    public void SetContainedSeat(SeatModel s)
+    {
+        ContainedSeat = s;
+        if(s is not null)
+        {
+            hasSeat = true;
+        }
+        else
+        {
+            hasSeat = false;
+        }
+        
+    }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ContainedSeat = CreatorState.FindSeatAtLocation(column, row);
+        hasSeat = ContainedSeat is not null ? true : false;
+    }
+    public void Dispose ()
+    {
+        if(ContainedSeat is not null)
+        {
+            //hasSeat = false;
+            CreatorState.DeleteSeat(ContainedSeat);
+        }
+        
+    }
+    
+}

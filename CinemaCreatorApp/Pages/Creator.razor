@@ -1,0 +1,135 @@
+﻿@page "/creator"
+@page "/creator/{roomIdString}"
+@using CinemaCreatorApp.Components
+@using CinemaCreatorApp.Data
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using System.Text.Json
+@inject ICinemaData _db
+@inject ICreatorStateService CreatorState
+@inject IJSRuntime JS
+
+<PageTitle>Cinema Creator</PageTitle>
+<EditForm Model="@room" OnValidSubmit="()=>showCreator=true">
+    <label>
+        X:
+        <InputNumber @bind-Value="room.Width" />
+    </label>
+    <label>
+        Y:
+        <InputNumber @bind-Value="room.Height" />
+    </label>
+
+    <button type="submit">Utwórz</button>
+</EditForm>
+@if (showCreator)
+{
+    <div class="seat-creator">
+
+        <div class="cinema-layout">
+            <div class="grid-container">
+                @*@((MarkupString)markup)*@
+                <Grid columns="room.Width" rows="room.Height" srToEdit="roomToEdit" />
+            </div>
+        </div>
+        <div class="seat-pallete">
+            <EditForm Model="@room">
+                <button class="btn btn-primary" @onclick="ZoomOut">-</button>
+                <button class="btn btn-primary" @onclick="ZoomIn">+</button>
+                <InputText @bind-Value=room.Name>Name</InputText>
+                <button class="btn btn-primary" @onclick="InsertRoom">Save</button>
+                @if (editingExistingRoom)
+                {
+                    <button class="btn btn-primary" @onclick="UpdateRoom">Update</button>
+                }
+            </EditForm>
+            <EditForm Model="si">
+                <InputRadioGroup TValue="int" @bind-Value="si.size">
+                    <ItemSelector size="1" text="Single Seat" />
+                    <ItemSelector size="2" text="Double Seat" />
+                </InputRadioGroup>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public RoomModel? roomToEdit { get; set; }
+    [Parameter]
+    public string roomIdString { get; set; }
+    public int roomId;
+    bool editingExistingRoom = false;
+    bool isMouseOver = false;
+    string? markup;
+
+    List<RoomModel> roomsData;
+    public RoomModel room = new RoomModel();
+    bool showCreator = false;
+    SelectedItem si = new SelectedItem();
+
+
+    private async Task InsertRoom()
+    {
+        room.SeatsJson = CreatorState.GetSeatsJson();
+        int id= await _db.InsertRoom(room);
+        room.Id = id;
+        editingExistingRoom = true;
+    }
+    private async Task UpdateRoom()
+    {
+        room.SeatsJson = CreatorState.GetSeatsJson();
+        //await _db.UpdateRoom(room)
+        Console.WriteLine(await _db.UpdateRoom(room));
+
+    }
+    public void GridItemHandler(int row, int column)
+    {
+        return;
+    }
+    async void WheelHandler(WheelEventArgs e)
+    {
+        if (e.DeltaY > 0)
+            await Zoom(0.1f);
+        else if (e.DeltaY < 0)
+            await Zoom(-0.1f);
+
+
+    }
+    async Task Zoom(float amount)
+    {
+        await JS.InvokeVoidAsync("zoom", amount);
+    }
+    async Task ZoomOut()
+    {
+        await JS.InvokeVoidAsync("zoom", -0.5f);
+    }
+    async Task ZoomIn()
+    {
+        await JS.InvokeVoidAsync("zoom", 0.5f);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        if (roomIdString is not null)
+        {
+            if (Int32.TryParse(roomIdString, out roomId))
+            {
+
+                roomsData = await _db.GetRooms();
+                room = roomsData.Find(room => room.Id == roomId);
+                if (room is not null)
+                {
+                    CreatorState.SetSeatsJson(room.SeatsJson);
+                    showCreator = true;
+                    roomToEdit = room;
+                    editingExistingRoom = true;
+                }
+
+            }
+        }
+        else{
+            CreatorState.InitializeSeats();
+        }
+
+    }
+}

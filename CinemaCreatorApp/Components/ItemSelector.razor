@@ -1,0 +1,17 @@
+﻿@using CinemaCreatorApp.Data
+@inject ICreatorStateService CreatorState
+<div>
+    
+    <img /> <InputRadio TValue="int" Value="size" @onchange="()=>CreatorState.SetSeatType(size.ToString())"></InputRadio>@text
+</div>
+
+@code {
+    [Parameter]
+    public int size { get; set; }
+    [Parameter]
+    public string? text { get; set; }         
+    struct ItemToSelect
+    {
+
+    }
+}

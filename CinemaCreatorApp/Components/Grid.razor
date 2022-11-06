@@ -1,0 +1,100 @@
+﻿@using CinemaCreatorApp.Data
+@using DataAccessLibrary.Models
+@inject ICreatorStateService CreatorState
+@code
+{
+    private int _columns;
+    private int _rows;
+    [Parameter]
+    public int columns
+    {
+        get { return _columns; }
+        set
+        {
+            //cells = new List<Cell>();
+            StateHasChanged();
+            _columns = value;
+
+        }
+    }
+    [Parameter]
+    public int rows
+    {
+        get { return _rows; }
+        set
+        {
+            //cells = new List<Cell>(); 
+            StateHasChanged(); 
+            _rows = value;
+        }
+    }
+    [Parameter]
+    public RoomModel? srToEdit { get; set; }
+    List<List<Cell>> cells = new List<List<Cell>>();
+    //List<Cell> cells = new List<Cell>();
+    Cell? componentRef;
+    SeatModel seat;
+}
+@for (int i = 0; i < rows; i++)
+{
+    cells.Add(new List<Cell>());
+    <div class="item-row">
+        @for (int j = 0; j < columns; j++)
+        {
+            var iValue = i;
+            var jValue = j; // jakis bug w czasie kompilacji
+            cells[iValue].Add(new Cell());
+            <Cell @ref="cells[iValue][jValue]" row="iValue" column="jValue"/>
+
+        }
+
+
+    </div>
+
+}
+@{
+    CreatorState.SetCells(cells);
+    CreatorState.RefreshCellStates();
+}
+@code
+{
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+
+        if (firstRender)
+        {
+
+            if (srToEdit is not null)
+            {
+
+
+            }
+
+        }
+       
+
+    }
+    //protected override void OnAfterRender(bool firstRender)
+    //{
+    //    if (firstRender)
+    //    {
+    //        @for (int i = 0; i < rows; i++)
+    //        {
+    //                @for (int j = 0; j < columns; j++)
+    //                {
+
+
+    //                    Console.WriteLine($"{cells[i][j].column}");
+
+    //                }
+
+    //        }
+
+    //    }
+    //}
+}
