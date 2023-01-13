@@ -9,7 +9,7 @@ main {
 }
 
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background: #110E1B;
 }
 
 .top-row {
@@ -63,8 +63,8 @@ main {
         z-index: 1;
     }
 
-    .top-row, article {
+/*    .top-row, article {
         padding-left: 2rem !important;
         padding-right: 1.5rem !important;
-    }
+    }*/
 }

@@ -1,36 +1,44 @@
-﻿@page "/RoomList"
+﻿@page "/database"
 @using DataAccessLibrary
 @using DataAccessLibrary.Models
 @inject ICinemaData _db
 @inject NavigationManager NavigationManager
 
-
-<h3>RoomList</h3>
-@if (screeningRoomsData is null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Name</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var room in screeningRoomsData)
-            {
+<div class="p-4">
+    <h3>List of rooms in database</h3>
+    @if (screeningRoomsData is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <table class="table table-sm table-striped table-bordered">
+            <thead>
                 <tr>
-                    <td @onclick="()=>RedirectToEditor(room)">@room.Id</td>
-                    <td @onclick="()=>RedirectToEditor(room)">@room.Name</td>
-                    <td @onclick="()=>DeleteRoom(room)">X</td>
+                    <th scope="col">Id</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Action</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+            </thead>
+            <tbody>
+                @foreach (var room in screeningRoomsData)
+                {
+                    <tr>
+                        <td>@room.Id</td>
+                        <td>@room.Name</td>
+                        <td>
+                            <span>
+                                <button class="btn btn-primary" @onclick="()=>RedirectToEditor(room)">Edit</button>
+                                <button class="btn btn-danger" @onclick="()=>DeleteRoom(room)">Delete</button>
+                            </span>
+                        </td>
 
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
 @code {
     List<RoomModel> screeningRoomsData;
     private async Task GetRooms()
@@ -46,10 +54,10 @@ else
     {
         await GetRooms();
     }
-    
+
     private void RedirectToEditor(RoomModel room)
     {
-        NavigationManager.NavigateTo("Creator/"+room.Id);
+        NavigationManager.NavigateTo("Creator/" + room.Id);
     }
-   
+
 }

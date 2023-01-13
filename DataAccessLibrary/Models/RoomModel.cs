@@ -11,8 +11,8 @@ namespace DataAccessLibrary.Models
     public class RoomModel
     {
         public int Id { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
+        public int NumColumns { get; set; }
+        public int NumRows { get; set; }
         public string Name { get; set; }
         //public List<SeatModel>? Seats { get; set; }
         public string? SeatsJson { get; set; }

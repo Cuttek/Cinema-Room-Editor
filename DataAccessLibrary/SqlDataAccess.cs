@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using DataAccessLibrary.Models;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -37,12 +38,13 @@ namespace DataAccessLibrary
                 return await connection.ExecuteAsync(sql, parameters);
             }
         }
-        public Task<int> SaveDataAndReturnInt<T>(string sql, T parameters)
+        public async Task<int> SaveDataAndReturnRow<T>(string sql, T parameters)
         {
             string connectionString = _config.GetConnectionString(ConnectionStringName);
             using (IDbConnection connection = new SqlConnection(connectionString))
             {
-                return connection.ExecuteScalarAsync<int>(sql, parameters);
+                int data= await connection.QuerySingleAsync<int>(sql, parameters);
+                return data;
             }
         }
         //public async Task<int> UpdateData<T>(string sql, T parameters)
