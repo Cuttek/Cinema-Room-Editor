@@ -1,0 +1,217 @@
+﻿@page "/editor"
+@page "/editor/{roomIdString}"
+@using CinemaCreatorApp.Components
+@using CinemaCreatorApp.Data
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using System.Text.Json
+@inject ICinemaData _db
+@inject IJSRuntime JS
+
+<PageTitle>Room Editor</PageTitle>
+@*<EditForm Model="@room" OnValidSubmit="()=>showCreator=true">
+    <label>
+        X:
+        <InputNumber @bind-Value="room.Width" />
+    </label>
+    <label>
+        Y:
+        <InputNumber @bind-Value="room.Height" />
+    </label>
+
+    <button type="submit">Utwórz</button>
+</EditForm>*@
+@if (showCreator)
+{
+    <div class="seat-creator">
+
+        <div class="cinema-layout">
+            <div class="grid-container">
+
+                <Grid NumColumns="room.NumColumns" NumRows="room.NumRows" room="room" @ref="grid" />
+            </div>
+        </div>
+        @*<div class="seat-pallete">
+    <div>
+    <button class="btn btn-primary" @onclick="ZoomOut">-</button>
+    <button class="btn btn-primary" @onclick="ZoomIn">+</button>
+    </div>
+    <EditForm Model="@room">
+
+    <div>
+    <label>
+    X:
+    @*<input type="range" min="1" max="100" @bind-value="room.Width" />
+    <InputNumber @bind-Value="room.Width" />
+    </label>
+    <label>
+    Y:
+    @*<input type="range" min="1" max="100" @bind-value="room.Height" />
+    <InputNumber @bind-Value="room.Height" />
+    </label>
+    </div>
+    <div>
+    <label>
+    Name:
+    <InputText @bind-Value=room.Name>Name</InputText>
+    </label>
+    </div>
+    <div>
+    <button class="btn btn-primary" @onclick="InsertRoom">Save</button>
+    @if (editingExistingRoom)
+    {
+    <button class="btn btn-primary" @onclick="UpdateRoom">Update</button>
+    }
+    </div>
+    </EditForm>
+
+    <EditForm Model="grid">
+
+    <InputRadioGroup TValue="string" @bind-Value="grid.SelectedType">
+    <p>Seat type:</p>
+    <label><InputRadio Value=@("None")></InputRadio>None</label>
+    <label><InputRadio Value=@("Single")></InputRadio>Single Seat</label>
+    <label><InputRadio Value=@("Double")></InputRadio>Double Seat</label>
+    </InputRadioGroup>
+    </EditForm>
+    </div>*@
+        <div class="seat-pallete flex-column">
+            <EditForm Model="@room">
+                <div class="form-group">
+                    <label for="roomName">Name of Room</label>
+                    <InputText id="roomName" class="form-control" @bind-Value="@room.Name" />
+                </div>
+                <div class="form-group">
+                    <label for="numRows">Number of Rows</label>
+                    <InputNumber id="numRows" class="form-control" @bind-Value="@room.NumRows" />
+                </div>
+                <div class="form-group">
+                    <label for="numColumns">Number of Columns</label>
+                    <InputNumber id="numColumns" class="form-control" @bind-Value="@room.NumColumns" />
+                </div>
+            </EditForm>
+            <EditForm Model="grid">
+                <InputRadioGroup TValue="string" @bind-Value="grid.SelectedSeatType" class="form-group">
+                    <label for="seatSelection">Seat Type Selection</label>
+                    <div class="form-check">
+                        <InputRadio id="none" class="form-check-input" Value=@("None") />
+                        <label class="form-check-label" for="none">Seat Remover</label>
+                    </div>
+                    <div class="form-check">
+                        <InputRadio id="single" class="form-check-input" Value=@("Single") />
+                        <label class="form-check-label" for="single">Single Seat</label>
+                    </div>
+                    <div class="form-check">
+                        <InputRadio id="double" class="form-check-input" Value=@("Double") />
+                        <label class="form-check-label" for="double">Double Seat</label>
+                    </div>
+                    <div class="form-check">
+                        <InputRadio id="single_accessible" class="form-check-input" Value=@("Single_Accessible") />
+                        <label class="form-check-label" for="single_accessible">Accessible Seat</label>
+                    </div>
+                </InputRadioGroup>
+            </EditForm>
+            <div class="form-group">
+                
+                @if (editingExistingRoom)
+                {
+                    <button type="submit" class="btn btn-primary m-1" @onclick="@InsertRoom">Save as new</button>
+                    <button type="button" class="btn btn-secondary m-1" @onclick="@UpdateRoom">Update</button>
+                }
+                else
+                {
+                    <button type="submit" class="btn btn-primary m-1" @onclick="@InsertRoom">Save</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+@code {
+    [Parameter]
+    public string? roomIdString { get; set; }
+    public int roomId;
+    bool editingExistingRoom = false;
+    List<RoomModel>? roomsData;
+    public RoomModel? room;
+    bool showCreator;
+    SelectedItem selectedItem;
+    Grid? grid;
+
+
+    private async Task InsertRoom()
+    {
+        room.SeatsJson = grid.GetSeatsJson();
+        room.Id = await _db.InsertRoom(room);
+        editingExistingRoom = true;
+    }
+    private async Task UpdateRoom()
+    {
+        room.SeatsJson = grid.GetSeatsJson();
+        await _db.UpdateRoom(room);
+    }
+
+    //async void WheelHandler(WheelEventArgs e)
+    //{
+    //    if (e.DeltaY > 0)
+    //        await Zoom(0.1f);
+    //    else if (e.DeltaY < 0)
+    //        await Zoom(-0.1f);
+
+
+    //}
+    //async Task Zoom(float amount)
+    //{
+    //    await JS.InvokeVoidAsync("zoom", amount);
+    //}
+    async Task ZoomOut()
+    {
+        await JS.InvokeVoidAsync("BlazorJSFunctions.zoom", -0.5f);
+    }
+    async Task ZoomIn()
+    {
+        await JS.InvokeVoidAsync("BlazorJSFunctions.zoom", 0.5f);
+    }
+
+    protected override void OnInitialized()
+    {
+        editingExistingRoom = false;
+        showCreator = false;
+        selectedItem = new SelectedItem();
+        grid = new Grid();
+        room = new RoomModel();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        if (roomIdString is not null)
+        {
+            if (Int32.TryParse(roomIdString, out roomId))
+            {
+                roomsData = await _db.GetRooms();
+                RoomModel? roomTemp = roomsData.Find(room => room.Id == roomId);
+                if (roomTemp is not null)
+                {
+                    room = roomTemp;
+                    editingExistingRoom = true;
+                }
+            }
+        }
+        else
+        {
+            room.NumColumns = 20;
+            room.NumRows = 10;
+        }
+
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (room is not null)
+            {
+
+            }
+            showCreator = true;
+            StateHasChanged();
+        }
+    }
+}

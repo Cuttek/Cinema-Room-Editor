@@ -1,76 +1,97 @@
 ﻿@using CinemaCreatorApp.Data
 @using DataAccessLibrary.Models
 @implements IDisposable
-@inject ICreatorStateService CreatorState
-<div class="grid-item" @onclick='()=>{CreatorState.ClickedSeat(this);}'>
-
-    @{
-       // hasSeat = ContainedSeat is not null ? true : false;
-    }
-    
-    
-    
-
-        
-    @if(hasSeat)
+@*@inject ICreatorStateService CreatorState*@
+<div class="grid-item" @onmousedown='(e)=>HandleClick(e,"down")' @onmouseup='(e)=>HandleClick(e,"up")'>
+    @if(HasSeat)
     {
-        <img src=@seatSource class="cell-image"/>
+        <img src='/svg/Seat_@(seatType).svg' class="cell-image" draggable="false"/>
+        if (DisplayNumber != -1)
+        {
+            <span class="cell-text">@DisplayNumber</span>
+        }
     }
-    else
-    {
-        <p style="font-size:14px;color:red;">@column,@row</p>
-    }
-
-    
+   
 </div>
 
 @code {
+    [ParameterAttribute]
+    public EventCallback<Cell> OnMouseDown { get; set; }
+    [ParameterAttribute]
+    public EventCallback<Cell> OnMouseUp { get; set; }
+    [ParameterAttribute]
+    public EventCallback<Cell> DemandSeatDeletion { get; set; }
     [Parameter]
-    public int row { get; set; }
+    public int Col { get; set; }
     [Parameter]
-    public int column { get; set; }
-    public SeatModel? ContainedSeat { get;private set; }
-
-    public bool hasSeat;
-    string seatSource = "png/single-seat-top.png";
-    void toggleSeatVisibility()
-    {
-        hasSeat = !hasSeat;
-    }
-    public void DeleteContainedSeat()
-    {
-        ContainedSeat = null;
-        hasSeat = false;
-    }
-    public void SetContainedSeat(SeatModel s)
-    {
-        ContainedSeat = s;
-        if(s is not null)
+    public int Row { get; set; }
+    [Parameter]
+    public int DisplayNumber { get; set; }
+    private bool hasSeat;
+    public bool HasSeat{ 
+        get
         {
-            hasSeat = true;
+            return hasSeat;
         }
-        else
+        set
         {
-            hasSeat = false;
+            hasSeat = value;
+            StateHasChanged();
         }
-        
     }
-
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        ContainedSeat = CreatorState.FindSeatAtLocation(column, row);
-        hasSeat = ContainedSeat is not null ? true : false;
-    }
-    public void Dispose ()
-    {
-        if(ContainedSeat is not null)
+    SeatType seatType = SeatType.None;
+    [Parameter]
+    public SeatType SeatSource{
+        get
         {
-            //hasSeat = false;
-            CreatorState.DeleteSeat(ContainedSeat);
+            return seatType;
         }
-        
+        set
+        {
+            if (value == SeatType.None)
+            {
+                HasSeat = false;
+            }
+            else
+            {
+                HasSeat = true;
+            }
+            seatType = value;
+        }
+    }
+    private void HandleClick(MouseEventArgs e, string mouseState)
+    {
+        if(e.Button==0L)
+        {
+            SendClickInformation(mouseState);
+        }
+    }
+    private void SendClickInformation(string mouseState)
+    {
+        switch(mouseState)
+        {
+            case "up":
+                OnMouseUp.InvokeAsync(this);
+                break;
+            case "down":
+                OnMouseDown.InvokeAsync(this);
+                break;
+        }
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if(firstRender)
+        {
+            if(HasSeat)
+            StateHasChanged();
+        }
+    }
+    public void Dispose()
+    {
+        if(HasSeat)
+        {
+            DemandSeatDeletion.InvokeAsync(this);
+        }
     }
     
 }

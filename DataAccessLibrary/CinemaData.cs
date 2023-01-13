@@ -22,16 +22,16 @@ namespace DataAccessLibrary
 
             return _db.LoadData<RoomModel, dynamic>(sql, new { });
         }
-        public Task<int> InsertRoom(RoomModel sr)
+        public async Task<int> InsertRoom(RoomModel sr)
         {
-            string sql = @$"insert into {database} (Name, Width,Height,SeatsJson)
-                        values (@Name, @Width,@Height,@SeatsJson)";
-            return _db.SaveData(sql, sr);
+            string sql = @$"insert into {database} (Name, NumColumns,NumRows,SeatsJson) values (@Name, @NumColumns,@NumRows,@SeatsJson); SELECT CAST(SCOPE_IDENTITY() as int);";
+            int id= await _db.SaveDataAndReturnRow(sql, sr);
+            return id;
         }
         
         public Task<int> UpdateRoom(RoomModel sr)
         {
-            string sql = @$"UPDATE {database} SET Name=@Name, Width=@Width,Height=@Height,SeatsJson=@SeatsJson WHERE Id=@Id";
+            string sql = @$"UPDATE {database} SET Name=@Name, NumColumns=@NumColumns,NumRows=@NumRows,SeatsJson=@SeatsJson WHERE Id=@Id";
             return _db.SaveData(sql, sr);
         }
         public Task<int> DeleteRoom(RoomModel sr)

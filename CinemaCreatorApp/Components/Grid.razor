@@ -1,100 +1,346 @@
 ﻿@using CinemaCreatorApp.Data
 @using DataAccessLibrary.Models
-@inject ICreatorStateService CreatorState
+@using System.Reflection
+@using System.Text.Json;
+@*@inject ICreatorStateService CreatorState*@
 @code
 {
-    private int _columns;
-    private int _rows;
+    private int _columns = 0;
+    private int _rows = 0;
     [Parameter]
-    public int columns
+    public int NumColumns
     {
         get { return _columns; }
         set
         {
-            //cells = new List<Cell>();
-            StateHasChanged();
+            if (value < 0) return;
+            ResizeCols(value);
             _columns = value;
-
         }
     }
     [Parameter]
-    public int rows
+    public int NumRows
     {
         get { return _rows; }
         set
         {
-            //cells = new List<Cell>(); 
-            StateHasChanged(); 
+            if (value < 0) return;
+            ResizeRows(value);
             _rows = value;
         }
     }
     [Parameter]
-    public RoomModel? srToEdit { get; set; }
-    List<List<Cell>> cells = new List<List<Cell>>();
-    //List<Cell> cells = new List<Cell>();
-    Cell? componentRef;
-    SeatModel seat;
-}
-@for (int i = 0; i < rows; i++)
-{
-    cells.Add(new List<Cell>());
-    <div class="item-row">
-        @for (int j = 0; j < columns; j++)
+    public RoomModel room { get; set; }
+    private string selectedSeatType;
+    public string SelectedSeatType
+    {
+        get { return selectedSeatType; }
+        set
         {
-            var iValue = i;
-            var jValue = j; // jakis bug w czasie kompilacji
-            cells[iValue].Add(new Cell());
-            <Cell @ref="cells[iValue][jValue]" row="iValue" column="jValue"/>
+            if (SetHandler(value))
+            {
+                selectedSeatType = value;
+            }
+        }
+    }
+    //public List<List<Cell>> cells = new List<List<Cell>>();
+    private List<List<SeatType>> seatType = new List<List<SeatType>>();
+    private bool boolsNotInitialized = true;
+    private List<SeatModel> seats = new List<SeatModel>();
+    public delegate void _Handler(int startRow,int endRow,int startColumn,int endColumn);
+    private _Handler Handler { get; set; }
+    private static Cell? selectedCell;
+}
+@{
+    //cells.Clear();
+    //bools.Clear();
+}
+@if (boolsNotInitialized)
+{
+    ResizeRows(NumRows);
+    ResizeCols(NumColumns);
+    boolsNotInitialized = false;
+    if(room.SeatsJson!=null)
+    {
+        SetSeatsJson(room.SeatsJson);
+    }
+}
+<div class="screen">SCREEN</div>
 
+<div class="item-row sticky-top">
+    <div class="origin-index index"></div>
+    @for (int j = 1; j <= NumColumns; j++)
+    {
+        <div class="column-index index">@j</div>
+    }
+</div>
+@for (int i = 0; i < NumRows; i++)
+{
+    //cells.Add(new List<Cell>());
+    //bools.Add(new List<bool>());
+    int seatCounter=0;
+    
+    <div class="item-row">
+        <div class="row-index index"><span>@(i + 1)</span></div>
+        
+        @for (int j = 0; j < NumColumns; j++)
+        {
+            int ii = i;
+            int jj = j; // jakis bug, musi tak zostać
+            
+            <Cell SeatSource="seatType[ii][jj]" Col="jj" Row="ii" DisplayNumber="(seatType[ii][jj]!=SeatType.None?++seatCounter:-1)" OnMouseDown="HandleMouseDown" OnMouseUp="HandleMouseUp" DemandSeatDeletion="DemandSeatDeletion"/>
         }
 
 
     </div>
-
-}
-@{
-    CreatorState.SetCells(cells);
-    CreatorState.RefreshCellStates();
 }
 @code
 {
-    protected override void OnInitialized()
+    void ResizeRows(int rows)
     {
-        base.OnInitialized();
+        if (seatType == null) seatType = new List<List<SeatType>>();
+        if (rows > seatType.Count)
+        {
+            List<SeatType> temp;
+
+            while (rows > seatType.Count)
+            {
+                temp = new List<SeatType>();
+                while (temp.Count < NumColumns) temp.Add(SeatType.None);
+                seatType.Add(temp);
+            }
+        }
+        else if (rows < seatType.Count)
+        {
+            seatType.RemoveRange(rows, seatType.Count - rows);
+        }
+    }
+    void ResizeCols(int cols)
+    {
+        foreach (List<SeatType> seatTypeList in seatType)
+        {
+            while (cols > seatTypeList.Count)
+            {
+                seatTypeList.Add(SeatType.None);
+            }
+            if (cols < seatTypeList.Count)
+            {
+                seatTypeList.RemoveRange(cols, seatTypeList.Count - cols);
+            }
+        }
+    }
+    public void SetSeats(List<SeatModel> _seats)
+    {
+        seats = new List<SeatModel>(_seats);
+        foreach (SeatModel s in _seats)
+        {
+            if (s.Col >= NumColumns || s.Row >= NumRows)
+            {
+                seats.Remove(s);
+                continue;
+            }
+            else
+                seatType[s.Row][s.Col] = s.SeatType;
+        }
+    }
+    public List<SeatModel> GetSeats() => seats;
+
+    [JSInvokable]
+    public static void JSHandleMouseUp()
+    {
+        selectedCell = null;
+    }
+    private void HandleMouseDown(Cell cell)
+    {
+        selectedCell = cell;
+        //DeleteSeat(FindSeatAtLocation(cell.Col, cell.Row));
+    }
+    private void HandleMouseUp(Cell cell)
+    {
+        if (cell is null || selectedCell is null) return;
+        int startColumn, endColumn;
+        int startRow, endRow;
+        if (cell.Col > selectedCell.Col)
+        {
+            startColumn = selectedCell.Col;
+            endColumn = cell.Col;
+        }
+        else
+        {
+            startColumn = cell.Col;
+            endColumn = selectedCell.Col;
+        }
+        if (cell.Row> selectedCell.Row)
+        {
+            startRow= selectedCell.Row;
+            endRow= cell.Row;
+        }
+        else
+        {
+            startRow= cell.Row;
+            endRow= selectedCell.Row;
+        }
+        Handler(startRow,endRow,startColumn,endColumn);
+
 
     }
-    protected override void OnAfterRender(bool firstRender)
+    private void DemandSeatDeletion(Cell cell)=>DeleteSeat(FindSeatAtLocation(cell.Col, cell.Row));
+
+    private bool SetHandler(string handler)
     {
-
-        if (firstRender)
+        MethodInfo? mi = typeof(Grid).GetMethod(handler, BindingFlags.NonPublic | BindingFlags.Instance);
+        if (mi != null)
         {
+            Handler = (_Handler)mi.CreateDelegate(typeof(_Handler), this);
+            return true;
+        }
+        return false;
+    }
+    public Grid()
+    {
+        selectedSeatType = "Single";
+        Handler = Single;
+    }
 
-            if (srToEdit is not null)
+    void DeleteSeat(SeatModel? seat)
+    {
+        if (seat is null)
+        {
+            return;
+            //throw new Exception("Attempt to delete null SeatModel");
+        }
+        if (seat.BindedSeats != null)
+        {
+            foreach (Position location in seat.BindedSeats)
             {
+                SeatModel? s = FindSeatAtLocation(location.x, location.y);
+                if (s != null)
+                {
+                    NullifySeat(s);
+                }
 
 
             }
-
         }
-       
+        NullifySeat(seat);
 
     }
-    //protected override void OnAfterRender(bool firstRender)
-    //{
-    //    if (firstRender)
-    //    {
-    //        @for (int i = 0; i < rows; i++)
-    //        {
-    //                @for (int j = 0; j < columns; j++)
-    //                {
+    void NullifySeat(SeatModel seat)
+    {
+        if (seat != null)
+        {
+            if (NumRows > seat.Row)
+            {
+                if (NumColumns > seat.Col)
+                {
+                    //cells[seat.Row][seat.Col].DeleteContainedSeat();
+                    seatType[seat.Row][seat.Col] = SeatType.None;
+                }
 
+            }
+            seats.Remove(seat);
+        }
+    }
+    SeatModel? FindSeatAtLocation(int column, int row)
+    {
+        return seats.Find(s => s.Col == column && s.Row == row);
+    }
+    private void None(int startRow, int endRow, int startColumn, int endColumn)
+    {
+        for(int i=startRow;i<=endRow;i++)
+        {
+            for(int j=startColumn;j<=endColumn;j++)
+            {
+                DeleteSeat(FindSeatAtLocation(j,i));
+            }
+        }
 
-    //                    Console.WriteLine($"{cells[i][j].column}");
+    }
+    private void Single(int startRow, int endRow, int startColumn, int endColumn)
+    {
+        for(int i=startRow;i<=endRow;i++)
+        {
+            for(int j=startColumn;j<=endColumn;j++)
+            {
+                if (seatType[i][j]!=SeatType.None)
+                {
+                    DeleteSeat(FindSeatAtLocation(j,i));
+                }
+                seats.Add(new SeatModel(j, i));
+                seatType[i][j] = SeatType.Single;
+            }
+        }
 
-    //                }
+    }
+    private void Double(int startRow, int endRow, int startColumn, int endColumn)
+    {
+        for (int i = startRow; i <= endRow; i++)
+        {
+            for (int j = startColumn; j <= endColumn; j+=2)
+            {
+                if (NumColumns > j + 1)
+                {
+                    SeatModel seat1 = new SeatModel(j, i, new List<Position>(), SeatType.Double_Left);
+                    SeatModel? seat2 = FindSeatAtLocation(j , i);
+                    if (seat2 != null)
+                    {
+                        DeleteSeat(seat2);
+                    }
+                    seat2 = FindSeatAtLocation(j+1, i);
+                    if (seat2 != null)
+                    {
+                        DeleteSeat(seat2);
+                    }
+                    seat2 = new SeatModel(j + 1, i, new List<Position> { new Position(seat1.Col, seat1.Row) }, SeatType.Double_Right);
+                    seat1.BindedSeats.Add(new Position(seat2.Col, seat2.Row));
 
-    //        }
+                    seatType[i][j] = SeatType.Double_Left;
+                    seatType[i][j + 1] = SeatType.Double_Right;
+                    seats.Add(seat1);
+                    seats.Add(seat2);
+                }
+            }
+        }
 
-    //    }
-    //}
+    }
+    private void Single_Accessible(int startRow, int endRow, int startColumn, int endColumn)
+    {
+        for (int i = startRow; i <= endRow; i++)
+        {
+            for (int j = startColumn; j <= endColumn; j++)
+            {
+                if (seatType[i][j] != SeatType.None)
+                {
+                    DeleteSeat(FindSeatAtLocation(j, i));
+                }
+                seats.Add(new SeatModel(j, i,SeatType.Single_Accessible));
+                seatType[i][j] = SeatType.Single_Accessible;
+            }
+        }
+
+    }
+    public string GetSeatsJson()=>JsonSerializer.Serialize(seats);
+    public void SetSeatsJson(string json)
+    {
+        if (json != null)
+        {
+            seats = (List<SeatModel>)JsonSerializer.Deserialize(json, typeof(List<SeatModel>));
+            SetSeats(seats);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        //CreatorState.SetCells(cells);
+        if (firstRender)
+        {
+        }
+    }
+
 }
