@@ -1,14 +1,15 @@
-﻿@using CinemaCreatorApp.Data
+﻿@using CinemaRoomEditor.Data
 @using DataAccessLibrary.Models
 @implements IDisposable
 @*@inject ICreatorStateService CreatorState*@
-<div class="grid-item" @onmousedown='(e)=>HandleClick(e,"down")' @onmouseup='(e)=>HandleClick(e,"up")'>
+
+<div class="grid-item @(ApplyGhostEffect==true?"hoverEffect":"")" @onmousedown='(e)=>HandleMouse(e,"down")' @onmouseup='(e)=>HandleMouse(e,"up")' @onmouseover='(e)=>HandleMouse(e,"over")'>
     @if(HasSeat)
     {
-        <img src='/svg/Seat_@(seatType).svg' class="cell-image" draggable="false"/>
+        <img src='@seatSource' class="cell-image @(ApplyGhostEffect==true?"opacity-50":"")" draggable="false" />
         if (DisplayNumber != -1)
         {
-            <span class="cell-text">@DisplayNumber</span>
+            <span class="cell-text text-focus-in @(ApplyGhostEffect==true?"opacity-50":"")">@DisplayNumber</span>
         }
     }
    
@@ -20,7 +21,11 @@
     [ParameterAttribute]
     public EventCallback<Cell> OnMouseUp { get; set; }
     [ParameterAttribute]
+    public EventCallback<Cell> OnMouseOver { get; set; }
+    [ParameterAttribute]
     public EventCallback<Cell> DemandSeatDeletion { get; set; }
+    [Parameter]
+    public bool? ApplyGhostEffect { get; set; }
     [Parameter]
     public int Col { get; set; }
     [Parameter]
@@ -39,16 +44,17 @@
             StateHasChanged();
         }
     }
-    SeatType seatType = SeatType.None;
+    string? seatSource;
     [Parameter]
-    public SeatType SeatSource{
+    public string? SeatSource{
         get
         {
-            return seatType;
+            return seatSource;
         }
         set
         {
-            if (value == SeatType.None)
+            seatSource = value;
+            if (seatSource == String.Empty)
             {
                 HasSeat = false;
             }
@@ -56,17 +62,17 @@
             {
                 HasSeat = true;
             }
-            seatType = value;
+
         }
     }
-    private void HandleClick(MouseEventArgs e, string mouseState)
+    private void HandleMouse(MouseEventArgs e, string mouseState)
     {
         if(e.Button==0L)
         {
-            SendClickInformation(mouseState);
+            SendMouseInformation(mouseState);
         }
     }
-    private void SendClickInformation(string mouseState)
+    private void SendMouseInformation(string mouseState)
     {
         switch(mouseState)
         {
@@ -75,6 +81,9 @@
                 break;
             case "down":
                 OnMouseDown.InvokeAsync(this);
+                break;
+            case "over":
+                OnMouseOver.InvokeAsync(this);
                 break;
         }
     }

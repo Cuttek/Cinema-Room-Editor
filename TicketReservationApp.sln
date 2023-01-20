@@ -5,7 +5,7 @@ VisualStudioVersion = 17.3.32811.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TicketReservationApp", "TicketReservationApp\TicketReservationApp.csproj", "{39A9A703-675A-4D4D-8561-2E2BA6060C8F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CinemaCreatorApp", "CinemaCreatorApp\CinemaCreatorApp.csproj", "{E6FA4095-76C1-40E4-B905-AE802434CCDC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CinemaRoomEditor", "CinemaRoomEditor\CinemaRoomEditor.csproj", "{E6FA4095-76C1-40E4-B905-AE802434CCDC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataAccessLibrary", "DataAccessLibrary\DataAccessLibrary.csproj", "{7C53CAF6-BC6B-4EA0-AE67-8B37368B3C99}"
 EndProject
