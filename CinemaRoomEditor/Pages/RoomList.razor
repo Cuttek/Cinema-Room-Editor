@@ -23,12 +23,13 @@
             <tbody>
                 @foreach (var room in screeningRoomsData)
                 {
-                    <tr>
+                    <tr id="@room.Id">
                         <td>@room.Id</td>
                         <td>@room.Name</td>
                         <td>
-                            <span>
-                                <button class="btn btn-primary" @onclick="()=>RedirectToEditor(room)">Edit</button>
+                            <span class="">
+                                <button class="btn btn-primary" @onclick='()=>RedirectToEditor(room,"viewing")'>Preview</button>
+                                <button class="btn btn-secondary" @onclick="()=>RedirectToEditor(room)">Edit</button>
                                 <button class="btn btn-danger" @onclick="()=>DeleteRoom(room)">Delete</button>
                             </span>
                         </td>
@@ -40,7 +41,7 @@
     }
 </div>
 @code {
-    List<RoomModel> screeningRoomsData;
+    List<RoomModel>? screeningRoomsData;
     private async Task GetRooms()
     {
         screeningRoomsData = await _db.GetRooms();
@@ -55,9 +56,9 @@
         await GetRooms();
     }
 
-    private void RedirectToEditor(RoomModel room)
+    private void RedirectToEditor(RoomModel room,string viewMode="editing")
     {
-        NavigationManager.NavigateTo("Creator/" + room.Id);
+        NavigationManager.NavigateTo("Editor/" + room.Id + "/"+viewMode);
     }
 
 }

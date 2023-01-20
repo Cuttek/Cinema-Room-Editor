@@ -19,5 +19,6 @@ window.BlazorJSFunctions =
 };
 window.addEventListener('mouseup', (event) => {
     
-    console.log(DotNet.invokeMethodAsync('CinemaCreatorApp','JSHandleMouseUp'));
+    console.log(DotNet.invokeMethodAsync('CinemaRoomEditor', 'JSMouseUp'));
+
 });

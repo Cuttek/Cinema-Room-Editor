@@ -1,0 +1,211 @@
+﻿@using CinemaRoomEditor.Data
+@using DataAccessLibrary.Models
+@using System.Reflection
+@using System.Text.Json;
+@implements IDisposable;
+@*@inject ICreatorStateService CreatorState*@
+@code
+{
+    public Grid()
+    {
+        selectedSeatType = String.Empty;
+        seatManager = new SeatManager();
+        ghostSeatManager = new SeatManager();
+        seatPlacer = new SeatPlacer(() => NumColumns);
+
+    }
+
+    private int _columns = 0;
+    private int _rows = 0;
+    [Parameter]
+    public int NumColumns
+    {
+        get { return _columns; }
+        set
+        {
+            if (value < 0)
+                _columns = 0;
+            else
+                _columns = value;
+        }
+    }
+    [Parameter]
+    public int NumRows
+    {
+        get { return _rows; }
+        set
+        {
+            if (value < 0)
+                _rows = 0;
+            else
+                _rows = value;
+        }
+    }
+    [Parameter]
+    public RoomModel? room { get; set; }
+    private bool editing;
+    [Parameter]
+    public bool Editing
+    {
+        get
+        {
+            return editing;
+        }
+        set
+        {
+            if (editing == value) return;
+            editing = value;
+            if (editing == true)
+            {
+                SelectedSeatType = "Single";
+            }
+            else
+            {
+                SelectedSeatType = null;
+            }
+
+        }
+    }
+    private string selectedSeatType;
+    public string SelectedSeatType
+    {
+        get { return selectedSeatType; }
+        set
+        {
+            if (seatPlacer.SetHandler(value))
+            {
+                selectedSeatType = value;
+            }
+        }
+    }
+    private SeatManager seatManager;
+    private static SeatManager ghostSeatManager = new SeatManager();
+    private SeatPlacer seatPlacer;
+    private static Cell? selectedCell;
+    int startColumn, endColumn;
+    int startRow, endRow;
+}
+<div class="screen">SCREEN</div>
+<div class="item-row sticky-top">
+    <div class="origin-index index"></div>
+    @for (int j = 1; j <= NumColumns; j++)
+    {
+        <div class="column-index index">@j</div>
+    }
+</div>
+@{
+    int ii;
+    int jj;
+    SeatModel? s;
+    int seatCounter;
+    bool applyGhostEffect;
+}
+@for (int i = 0; i < NumRows; i++)
+{
+    seatCounter = 0;
+
+    <div class="item-row">
+        <div class="row-index index"><span>@(i + 1)</span></div>
+
+        @for (int j = 0; j < NumColumns; j++)
+        {
+            ii = i;
+            jj = j;
+            applyGhostEffect = false;
+            s = null;
+
+            // if user is selecting area
+            if (selectedCell != null && startColumn <= jj && jj <= endColumn && startRow <= ii && ii <= endRow)
+            {
+                applyGhostEffect = true;
+                if (SelectedSeatType != "None")
+                {
+                    s = ghostSeatManager.FindSeatAtLocation(jj, ii);
+                }
+            }
+            else if ((s = seatManager.FindSeatAtLocation(jj, ii)) != null && s.SeatType == SeatType.None)
+            {
+                seatManager.DeleteSeat(s);
+            }
+
+            <Cell SeatSource=@(s==null?String.Empty:"/svg/Seat_"+s.SeatType+".svg") ApplyGhostEffect="applyGhostEffect" Col="jj" Row="ii" DisplayNumber="(s!=null?++seatCounter:-1)" OnMouseDown="HandleMouseDown" OnMouseUp="HandleMouseUp" DemandSeatDeletion="DemandSeatDeletion" OnMouseOver="HandleMouseOver" />
+        }
+    </div>
+}
+@code
+{
+    //Seat Management
+    public string GetSeatsJson() => seatManager.GetSeatsJson();
+
+
+    //Event methods
+    private void DemandSeatDeletion(Cell cell) => seatManager.DeleteSeat(cell.Col, cell.Row);
+
+    public void JSHandleMouseUp(object sender, EventArgs e)
+    {
+        selectedCell = null;
+        startColumn = endColumn = startRow = endRow = -1;
+        //StateHasChanged();
+        InvokeAsync(StateHasChanged);
+    }
+    private void HandleMouseDown(Cell cell)
+    {
+
+        selectedCell = cell;
+    }
+    private void HandleMouseUp(Cell cell)
+    {
+        if (cell is null || selectedCell is null) return;
+        InitializeIndicies(cell, selectedCell);
+        seatPlacer.Handle(seatManager, startRow, endRow, startColumn, endColumn);
+        selectedCell = null;
+    }
+    private void HandleMouseOver(Cell cell)
+    {
+
+        if (selectedCell != null)
+        {
+            ghostSeatManager.InitSeats();
+            InitializeIndicies(cell, selectedCell);
+            seatPlacer.Handle(ghostSeatManager, startRow, endRow, startColumn, endColumn);
+        }
+
+    }
+    private void InitializeIndicies(Cell cellOne, Cell cellTwo)
+    {
+        if (cellOne.Col > cellTwo.Col)
+        {
+            startColumn = cellTwo.Col;
+            endColumn = cellOne.Col;
+        }
+        else
+        {
+            startColumn = cellOne.Col;
+            endColumn = cellTwo.Col;
+        }
+        if (cellOne.Row > cellTwo.Row)
+        {
+            startRow = cellTwo.Row;
+            endRow = cellOne.Row;
+        }
+        else
+        {
+            startRow = cellOne.Row;
+            endRow = cellTwo.Row;
+        }
+    }
+    protected override void OnInitialized()
+    {
+        Events.OnJsMouseUp += JSHandleMouseUp;
+        if (room != null && room.SeatsJson != null)
+        {
+            seatManager = new SeatManager(room.SeatsJson);
+        }
+
+    }
+    public void Dispose()
+    {
+        Events.OnJsMouseUp -= JSHandleMouseUp;
+        GC.SuppressFinalize(this);
+    }
+}

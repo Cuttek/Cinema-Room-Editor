@@ -1,95 +1,44 @@
 ﻿@page "/editor"
 @page "/editor/{roomIdString}"
-@using CinemaCreatorApp.Components
-@using CinemaCreatorApp.Data
+@page "/editor/{roomIdString}/{viewMode}"
+@using CinemaRoomEditor.Components
+@using CinemaRoomEditor.Data
 @using DataAccessLibrary
 @using DataAccessLibrary.Models
 @using System.Text.Json
 @inject ICinemaData _db
 @inject IJSRuntime JS
-
+@inject NavigationManager NavigationManager
 <PageTitle>Room Editor</PageTitle>
-@*<EditForm Model="@room" OnValidSubmit="()=>showCreator=true">
-    <label>
-        X:
-        <InputNumber @bind-Value="room.Width" />
-    </label>
-    <label>
-        Y:
-        <InputNumber @bind-Value="room.Height" />
-    </label>
 
-    <button type="submit">Utwórz</button>
-</EditForm>*@
-@if (showCreator)
-{
-    <div class="seat-creator">
+<div class="room-editor">
 
-        <div class="cinema-layout">
-            <div class="grid-container">
+    <div class="cinema-layout">
+        <div class="grid-container">
+            @if (renderEditor == true)
+            {
+                <Grid NumColumns="room.NumColumns" NumRows="room.NumRows" room="room" Editing='(viewMode=="viewing"?false:true)' @ref="grid" />
+            }
 
-                <Grid NumColumns="room.NumColumns" NumRows="room.NumRows" room="room" @ref="grid" />
-            </div>
         </div>
-        @*<div class="seat-pallete">
-    <div>
-    <button class="btn btn-primary" @onclick="ZoomOut">-</button>
-    <button class="btn btn-primary" @onclick="ZoomIn">+</button>
     </div>
-    <EditForm Model="@room">
-
-    <div>
-    <label>
-    X:
-    @*<input type="range" min="1" max="100" @bind-value="room.Width" />
-    <InputNumber @bind-Value="room.Width" />
-    </label>
-    <label>
-    Y:
-    @*<input type="range" min="1" max="100" @bind-value="room.Height" />
-    <InputNumber @bind-Value="room.Height" />
-    </label>
-    </div>
-    <div>
-    <label>
-    Name:
-    <InputText @bind-Value=room.Name>Name</InputText>
-    </label>
-    </div>
-    <div>
-    <button class="btn btn-primary" @onclick="InsertRoom">Save</button>
-    @if (editingExistingRoom)
-    {
-    <button class="btn btn-primary" @onclick="UpdateRoom">Update</button>
-    }
-    </div>
-    </EditForm>
-
-    <EditForm Model="grid">
-
-    <InputRadioGroup TValue="string" @bind-Value="grid.SelectedType">
-    <p>Seat type:</p>
-    <label><InputRadio Value=@("None")></InputRadio>None</label>
-    <label><InputRadio Value=@("Single")></InputRadio>Single Seat</label>
-    <label><InputRadio Value=@("Double")></InputRadio>Double Seat</label>
-    </InputRadioGroup>
-    </EditForm>
-    </div>*@
-        <div class="seat-pallete flex-column">
-            <EditForm Model="@room">
-                <div class="form-group">
-                    <label for="roomName">Name of Room</label>
-                    <InputText id="roomName" class="form-control" @bind-Value="@room.Name" />
-                </div>
-                <div class="form-group">
-                    <label for="numRows">Number of Rows</label>
-                    <InputNumber id="numRows" class="form-control" @bind-Value="@room.NumRows" />
-                </div>
-                <div class="form-group">
-                    <label for="numColumns">Number of Columns</label>
-                    <InputNumber id="numColumns" class="form-control" @bind-Value="@room.NumColumns" />
-                </div>
-            </EditForm>
+    <div class="room-editor-panel flex-column">
+        <EditForm Model="@room">
+            <div class="form-group">
+                <label for="roomName">Name of Room</label>
+                <InputText id="roomName" class="form-control" @bind-Value="@room.Name" disabled=@(viewMode=="viewing"?true:false) />
+            </div>
+            <div class="form-group">
+                <label for="numRows">Number of Rows</label>
+                <InputNumber id="numRows" class="form-control" @bind-Value="@room.NumRows" disabled=@(viewMode=="viewing"?true:false) />
+            </div>
+            <div class="form-group">
+                <label for="numColumns">Number of Columns</label>
+                <InputNumber id="numColumns" class="form-control" @bind-Value="@room.NumColumns" disabled=@(viewMode=="viewing"?true:false) />
+            </div>
+        </EditForm>
+        @if (viewMode != "viewing" && grid != null)
+        {
             <EditForm Model="grid">
                 <InputRadioGroup TValue="string" @bind-Value="grid.SelectedSeatType" class="form-group">
                     <label for="seatSelection">Seat Type Selection</label>
@@ -111,8 +60,10 @@
                     </div>
                 </InputRadioGroup>
             </EditForm>
+
+
             <div class="form-group">
-                
+
                 @if (editingExistingRoom)
                 {
                     <button type="submit" class="btn btn-primary m-1" @onclick="@InsertRoom">Save as new</button>
@@ -123,33 +74,57 @@
                     <button type="submit" class="btn btn-primary m-1" @onclick="@InsertRoom">Save</button>
                 }
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="form-group m-4">
+                <button type="button" class="btn btn-primary m-1" @onclick="()=>RedirectToRoomList(room.Id)">Go back</button>
+                <button type="button" class="btn btn-secondary m-1" @onclick='()=>ChangeViewingMode(room.Id,"editing")'>Edit</button>
+            </div>
+        }
+
     </div>
-}
+</div>
+
 @code {
     [Parameter]
     public string? roomIdString { get; set; }
-    public int roomId;
+    [Parameter]
+    public string? viewMode { get; set; }
+    int roomId;
     bool editingExistingRoom = false;
+    bool renderEditor = false;
+
     List<RoomModel>? roomsData;
-    public RoomModel? room;
-    bool showCreator;
-    SelectedItem selectedItem;
+    RoomModel room;
     Grid? grid;
 
-
+    public Editor()
+    {
+        grid = new Grid();
+        room = new RoomModel();
+    }
     private async Task InsertRoom()
     {
+        if (grid == null) return;
         room.SeatsJson = grid.GetSeatsJson();
         room.Id = await _db.InsertRoom(room);
         editingExistingRoom = true;
     }
     private async Task UpdateRoom()
     {
+        if (grid == null) return;
         room.SeatsJson = grid.GetSeatsJson();
         await _db.UpdateRoom(room);
     }
-
+    private void RedirectToRoomList(int id)
+    {
+        NavigationManager.NavigateTo("Database#" + id.ToString());
+    }
+    private void ChangeViewingMode(int id,string viewingMode)
+    {
+        NavigationManager.NavigateTo("Editor/"+id.ToString()+"/"+viewingMode);
+    }
     //async void WheelHandler(WheelEventArgs e)
     //{
     //    if (e.DeltaY > 0)
@@ -163,20 +138,18 @@
     //{
     //    await JS.InvokeVoidAsync("zoom", amount);
     //}
-    async Task ZoomOut()
-    {
-        await JS.InvokeVoidAsync("BlazorJSFunctions.zoom", -0.5f);
-    }
-    async Task ZoomIn()
-    {
-        await JS.InvokeVoidAsync("BlazorJSFunctions.zoom", 0.5f);
-    }
+    //async Task ZoomOut()
+    //{
+    //    await JS.InvokeVoidAsync("BlazorJSFunctions.zoom", -0.5f);
+    //}
+    //async Task ZoomIn()
+    //{
+    //    await JS.InvokeVoidAsync("BlazorJSFunctions.zoom", 0.5f);
+    //}
 
     protected override void OnInitialized()
     {
         editingExistingRoom = false;
-        showCreator = false;
-        selectedItem = new SelectedItem();
         grid = new Grid();
         room = new RoomModel();
     }
@@ -201,6 +174,8 @@
             room.NumRows = 10;
         }
 
+        renderEditor = true;
+
     }
     protected override void OnAfterRender(bool firstRender)
     {
@@ -210,7 +185,6 @@
             {
 
             }
-            showCreator = true;
             StateHasChanged();
         }
     }

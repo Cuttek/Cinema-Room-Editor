@@ -1,4 +1,4 @@
-using CinemaCreatorApp.Data;
+using CinemaRoomEditor.Data;
 using DataAccessLibrary;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
