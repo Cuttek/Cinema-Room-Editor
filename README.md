@@ -16,3 +16,5 @@ It's a CRUD web app which allows to manage layouts of rooms in your cinema
            ![Previewing entry from database](CinemaRoomEditor/wwwroot/gif/database_demo.gif)
          </details>
 
+# Live Demo
+[Demo Page](https://cinemaroomeditor.azurewebsites.net/)
